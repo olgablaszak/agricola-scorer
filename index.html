@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricola – Licznik Punktów</title>
+    <style>
+        :root {
+            --green-dark:  #2d5a3d;
+            --green:       #4a7c59;
+            --green-light: #6b9e78;
+            --gold:        #d4a843;
+            --gold-dark:   #b8882a;
+            --bg:          #f4f0e6;
+            --surface:     #ffffff;
+            --surface-alt: #faf8f3;
+            --text:        #2c2417;
+            --text-muted:  #7a6e5f;
+            --border:      #e0d5c3;
+            --red:         #c0392b;
+            --shadow:      0 2px 14px rgba(44,36,23,.12);
+            --r:           12px;
+            --r-sm:        8px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
+            color: #fff;
+            padding: 20px 24px;
+            text-align: center;
+        }
+        header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.5px; }
+        header p  { opacity: .8; font-size: .9rem; margin-top: 3px; }
+
+        /* ── Layout ── */
+        main {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 20px 16px 40px;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeUp .3s ease; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--surface);
+            border-radius: var(--r);
+            padding: 22px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--green-dark);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            font-size: .82rem;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; padding: 13px 20px;
+            border: none; border-radius: var(--r-sm);
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+            transition: all .18s;
+        }
+        .btn-green  { background: var(--green); color: #fff; }
+        .btn-green:hover  { background: var(--green-dark); transform: translateY(-1px); }
+        .btn-gold   { background: var(--gold);  color: #fff; }
+        .btn-gold:hover   { background: var(--gold-dark);  transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--green); border: 2px solid var(--green); }
+        .btn-outline:hover { background: var(--green); color: #fff; }
+
+        /* ── Setup: player count ── */
+        .count-row {
+            display: flex; gap: 8px; margin-bottom: 20px;
+        }
+        .count-btn {
+            flex: 1; padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: var(--r-sm);
+            background: var(--surface);
+            font-size: 1.15rem; font-weight: 700; cursor: pointer;
+            color: var(--text-muted); transition: all .18s;
+        }
+        .count-btn.active {
+            border-color: var(--green);
+            background: var(--green);
+            color: #fff;
+        }
+        .count-btn:hover:not(.active) { border-color: var(--green-light); color: var(--green); }
+
+        /* ── Setup: player name inputs ── */
+        .player-name-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 10px;
+        }
+        .dot { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+        input[type="text"] {
+            flex: 1; padding: 10px 14px;
+            border: 2px solid var(--border); border-radius: var(--r-sm);
+            font-size: 1rem; outline: none; transition: border-color .18s;
+            background: var(--surface); color: var(--text);
+        }
+        input[type="text"]:focus { border-color: var(--green); }
+
+        /* ── Score sticky bar ── */
+        .score-bar {
+            position: sticky; top: 0; z-index: 20;
+            background: var(--green-dark);
+            color: #fff;
+            border-radius: var(--r-sm);
+            padding: 12px 18px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.2);
+        }
+        .score-bar-name  { font-weight: 700; font-size: 1rem; }
+        .score-bar-label { font-size: .72rem; opacity: .75; }
+        .score-bar-total { font-size: 1.7rem; font-weight: 800; }
+
+        /* ── Player tabs ── */
+        .tabs {
+            display: flex; gap: 6px;
+            overflow-x: auto; padding-bottom: 4px;
+            margin-bottom: 14px;
+            scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            flex-shrink: 0;
+            padding: 7px 14px;
+            border: none; border-radius: 20px;
+            background: var(--border); color: var(--text-muted);
+            font-size: .85rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: all .18s;
+        }
+        .tab.active { background: var(--green); color: #fff; }
+        .tab-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* ── Category row ── */
+        .cat-row {
+            display: flex; align-items: center;
+            padding: 13px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+        .cat-row:last-child { border-bottom: none; }
+        .cat-icon  { font-size: 1.4rem; width: 34px; text-align: center; flex-shrink: 0; }
+        .cat-info  { flex: 1; min-width: 0; }
+        .cat-name  { font-weight: 600; font-size: .95rem; line-height: 1.2; }
+        .cat-hint  { font-size: .72rem; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+        .cat-pts   { font-weight: 800; font-size: 1.1rem; width: 46px; text-align: right; flex-shrink: 0; }
+        .cat-pts.neg  { color: var(--red); }
+        .cat-pts.pos  { color: var(--green-dark); }
+        .cat-pts.zero { color: var(--text-muted); }
+
+        /* ── Counter ── */
+        .counter { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+        .c-btn {
+            width: 32px; height: 32px;
+            border: 2px solid var(--border); border-radius: 8px;
+            background: var(--surface); color: var(--text);
+            font-size: 1.2rem; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .12s; user-select: none;
+        }
+        .c-btn:hover  { border-color: var(--green); color: var(--green); }
+        .c-btn:active { background: var(--green); color: #fff; border-color: var(--green); }
+        .c-val { width: 34px; text-align: center; font-size: 1.1rem; font-weight: 700; }
+
+        /* ── House selector ── */
+        .house-extras { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .house-row { display: flex; align-items: center; gap: 10px; }
+        .house-row-label { font-size: .8rem; color: var(--text-muted); width: 110px; flex-shrink: 0; }
+        .material-btns { display: flex; gap: 6px; }
+        .mat-btn {
+            flex: 1; padding: 7px 6px;
+            border: 2px solid var(--border); border-radius: var(--r-sm);
+            background: var(--surface); font-size: .78rem; font-weight: 600;
+            cursor: pointer; text-align: center; transition: all .18s; color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .mat-btn.active { border-color: var(--green); background: var(--green); color: #fff; }
+
+        /* ── Nav buttons ── */
+        .nav-row { display: flex; gap: 8px; margin-top: 14px; }
+        .nav-btn {
+            flex: 1; padding: 12px;
+            border: none; border-radius: var(--r-sm);
+            font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .18s;
+        }
+        .nav-prev { background: var(--border); color: var(--text-muted); }
+        .nav-next { background: var(--green); color: #fff; }
+        .nav-finish { background: var(--gold); color: #fff; }
+        .nav-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+        /* ── Results ── */
+        .result-item {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--r);
+            padding: 16px;
+            display: flex; align-items: flex-start; gap: 14px;
+            box-shadow: var(--shadow);
+            margin-bottom: 10px;
+        }
+        .result-item.winner { border-color: var(--gold); background: linear-gradient(135deg,#fffaf0,#fff3d0); }
+        .result-rank  { font-size: 1.7rem; font-weight: 900; width: 38px; text-align: center; flex-shrink: 0; line-height: 1; }
+        .rank-gold   { color: #c9982d; }
+        .rank-silver { color: #8c9199; }
+        .rank-bronze { color: #a0665a; }
+        .rank-other  { color: var(--text-muted); font-size: 1.2rem; }
+        .result-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 2px; }
+        .result-score { font-size: 1.9rem; font-weight: 900; color: var(--green-dark); margin-left: auto; flex-shrink: 0; }
+        .result-label { font-size: .72rem; color: var(--text-muted); }
+
+        /* breakdown */
+        .detail-btn {
+            background: none; border: none; color: var(--text-muted);
+            font-size: .78rem; cursor: pointer; padding: 3px 0; transition: color .18s;
+        }
+        .detail-btn:hover { color: var(--text); }
+        .breakdown { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+        .breakdown.open { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+        .bd-row { display: flex; justify-content: space-between; font-size: .8rem; }
+        .bd-label { color: var(--text-muted); }
+        .bd-val { font-weight: 600; }
+        .bd-val.neg { color: var(--red); }
+
+        /* info pill */
+        .info-pill {
+            background: #e8f5ec; color: var(--green-dark);
+            border-radius: 6px; padding: 8px 12px;
+            font-size: .8rem; margin-bottom: 14px;
+            border-left: 3px solid var(--green);
+        }
+
+        @media (max-width: 480px) {
+            header h1 { font-size: 1.45rem; }
+            main { padding: 12px 10px 40px; }
+            .cat-name { font-size: .88rem; }
+            .cat-pts { font-size: 1rem; width: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🌾 Agricola</h1>
+    <p>Licznik Punktów</p>
+</header>
+
+<main>
+
+    <!-- ══════════════ SETUP ══════════════ -->
+    <div id="screen-setup" class="screen active">
+        <div class="card">
+            <div class="card-title">Liczba graczy</div>
+            <div class="count-row">
+                <button class="count-btn" onclick="setCount(2)">2</button>
+                <button class="count-btn" onclick="setCount(3)">3</button>
+                <button class="count-btn active" onclick="setCount(4)">4</button>
+                <button class="count-btn" onclick="setCount(5)">5</button>
+            </div>
+
+            <div class="card-title">Imiona graczy</div>
+            <div id="name-inputs"></div>
+        </div>
+        <button class="btn btn-green" onclick="startGame()">Rozpocznij grę →</button>
+    </div>
+
+    <!-- ══════════════ SCORING ══════════════ -->
+    <div id="screen-scoring" class="screen">
+        <div class="tabs" id="tabs"></div>
+
+        <div class="score-bar">
+            <div>
+                <div class="score-bar-name" id="bar-name">Gracz</div>
+                <div class="score-bar-label">bieżący gracz</div>
+            </div>
+            <div style="text-align:right">
+                <div class="score-bar-label">Suma punktów</div>
+                <div class="score-bar-total" id="bar-total">0</div>
+            </div>
+        </div>
+
+        <div class="info-pill" id="scoring-tip">
+            Wpisz wyniki dla każdego gracza, a następnie przejdź do następnego.
+        </div>
+
+        <div class="card" id="scoring-card"></div>
+
+        <div class="nav-row" id="nav-row"></div>
+    </div>
+
+    <!-- ══════════════ RESULTS ══════════════ -->
+    <div id="screen-results" class="screen">
+        <div class="card">
+            <div style="font-size:1.25rem;font-weight:800;text-align:center;margin-bottom:18px;color:var(--green-dark)">
+                🏆 Wyniki końcowe
+            </div>
+            <div id="results-list"></div>
+        </div>
+        <button class="btn btn-outline" onclick="newGame()">↩ Nowa gra</button>
+    </div>
+
+</main>
+
+<script>
+/* ────────────────────────────────────────────────
+   CONSTANTS
+──────────────────────────────────────────────── */
+const COLORS = ['#e74c3c','#3498db','#27ae60','#f39c12','#8e44ad'];
+
+/* Scoring lookup functions */
+const calc = {
+    fields:     n => [,1,2,3,4,4][Math.min(n,5)] ?? -1,   // 0→-1 handled below
+    pastures:   n => [,1,2,3,4,4][Math.min(n,5)] ?? -1,
+    grain:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
+    vegetables: n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
+    sheep:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
+    boar:       n => n===0?-1: n<=2?1: n<=4?2: n<=6?3: 4,
+    cattle:     n => n===0?-1: n===1?1: n<=3?2: n<=5?3: 4,
+};
+// fix the lookup table for 0
+['fields','pastures'].forEach(k => {
+    const orig = calc[k];
+    calc[k] = n => n===0 ? -1 : orig(n);
+});
+
+const HOUSE_PTS = { wood: 0, clay: 1, stone: 2 };
+
+/* Category definitions */
+const CATS = [
+    { id:'fields',     type:'counter', icon:'🌾', name:'Pola',
+      hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
+      min:0, max:10, score: n => calc.fields(n) },
+
+    { id:'pastures',   type:'counter', icon:'🌿', name:'Pastwiska',
+      hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
+      min:0, max:10, score: n => calc.pastures(n) },
+
+    { id:'grain',      type:'counter', icon:'🌽', name:'Zboże (łącznie)',
+      hint:'0: −1 | 1–3: +1 | 4–5: +2 | 6–7: +3 | 8+: +4',
+      min:0, max:20, score: n => calc.grain(n) },
+
+    { id:'vegetables', type:'counter', icon:'🥕', name:'Warzywa',
+      hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
+      min:0, max:10, score: n => calc.vegetables(n) },
+
+    { id:'sheep',      type:'counter', icon:'🐑', name:'Owce',
+      hint:'0: −1 | 1–3: +1 | 4–5: +2 | 6–7: +3 | 8+: +4',
+      min:0, max:20, score: n => calc.sheep(n) },
+
+    { id:'boar',       type:'counter', icon:'🐗', name:'Dziki',
+      hint:'0: −1 | 1–2: +1 | 3–4: +2 | 5–6: +3 | 7+: +4',
+      min:0, max:20, score: n => calc.boar(n) },
+
+    { id:'cattle',     type:'counter', icon:'🐄', name:'Bydło',
+      hint:'0: −1 | 1: +1 | 2–3: +2 | 4–5: +3 | 6+: +4',
+      min:0, max:20, score: n => calc.cattle(n) },
+
+    { id:'empty',      type:'counter', icon:'⬜', name:'Puste miejsca w zagrodzie',
+      hint:'−1 punkt za każde puste miejsce',
+      min:0, max:15, score: n => -n },
+
+    { id:'stables',    type:'counter', icon:'🏠', name:'Ogrodzone stajnie',
+      hint:'+1 punkt za każdą ogrodzoną stajnię',
+      min:0, max:10, score: n => n },
+
+    { id:'house',      type:'house',   icon:'🏡', name:'Dom' },
+
+    { id:'family',     type:'counter', icon:'👨‍👩‍👧', name:'Członkowie rodziny',
+      hint:'+3 punkty za każdą osobę',
+      min:1, max:5, score: n => n * 3 },
+
+    { id:'bonus',      type:'manual',  icon:'🃏', name:'Karty ulepszeń / zajęć',
+      hint:'Suma punktów z żółtych kółek na kartach' },
+
+    { id:'begging',    type:'counter', icon:'🙏', name:'Karty żebraniny',
+      hint:'−3 punkty za każdą kartę żebraniny',
+      min:0, max:10, score: n => n * -3 },
+];
+
+/* ────────────────────────────────────────────────
+   STATE
+──────────────────────────────────────────────── */
+let players = [];
+let cur = 0;
+let numPlayers = 4;
+
+function makePlayer(name, idx) {
+    const vals = {};
+    CATS.filter(c => c.type === 'counter').forEach(c => {
+        vals[c.id] = c.id === 'family' ? 2 : 0;
+    });
+    return { name, color: COLORS[idx], vals, houseRooms: 2, houseMat: 'wood', bonus: 0 };
+}
+
+function houseScore(p) { return p.houseRooms * HOUSE_PTS[p.houseMat]; }
+
+function playerTotal(p) {
+    return CATS.reduce((sum, c) => {
+        if (c.type === 'counter') return sum + c.score(p.vals[c.id] ?? 0);
+        if (c.type === 'house')   return sum + houseScore(p);
+        if (c.type === 'manual')  return sum + (p.bonus ?? 0);
+        return sum;
+    }, 0);
+}
+
+/* ────────────────────────────────────────────────
+   SETUP
+──────────────────────────────────────────────── */
+function setCount(n) {
+    numPlayers = n;
+    document.querySelectorAll('.count-btn').forEach((b, i) => {
+        b.classList.toggle('active', i + 2 === n);
+    });
+    renderNameInputs();
+}
+
+function renderNameInputs() {
+    const defaults = ['Ania','Bartek','Celina','Dawid','Ewa'];
+    const c = document.getElementById('name-inputs');
+    c.innerHTML = '';
+    for (let i = 0; i < numPlayers; i++) {
+        const row = document.createElement('div');
+        row.className = 'player-name-row';
+        row.innerHTML = `
+            <div class="dot" style="background:${COLORS[i]}"></div>
+            <input type="text" id="pname-${i}" placeholder="${defaults[i]}" value="${defaults[i]}">
+        `;
+        c.appendChild(row);
+    }
+}
+
+function startGame() {
+    players = [];
+    for (let i = 0; i < numPlayers; i++) {
+        const el = document.getElementById(`pname-${i}`);
+        players.push(makePlayer(el.value.trim() || `Gracz ${i+1}`, i));
+    }
+    cur = 0;
+    show('scoring');
+    renderTabs();
+    renderCard();
+}
+
+/* ────────────────────────────────────────────────
+   SCORING
+──────────────────────────────────────────────── */
+function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+}
+
+function renderTabs() {
+    const c = document.getElementById('tabs');
+    c.innerHTML = '';
+    players.forEach((p, i) => {
+        const t = document.createElement('button');
+        t.className = 'tab' + (i === cur ? ' active' : '');
+        t.innerHTML = `<span class="tab-dot" style="background:${p.color}"></span>${p.name}`;
+        t.onclick = () => switchTo(i);
+        c.appendChild(t);
+    });
+}
+
+function switchTo(idx) {
+    cur = idx;
+    renderTabs();
+    renderCard();
+}
+
+function renderCard() {
+    const p = players[cur];
+    document.getElementById('bar-name').textContent = p.name;
+    updateBar();
+
+    const card = document.getElementById('scoring-card');
+    card.innerHTML = '';
+
+    CATS.forEach(cat => {
+        const row = document.createElement('div');
+        row.className = 'cat-row';
+
+        if (cat.type === 'counter') {
+            const v = p.vals[cat.id] ?? 0;
+            const pts = cat.score(v);
+            row.innerHTML = `
+                <div class="cat-icon">${cat.icon}</div>
+                <div class="cat-info">
+                    <div class="cat-name">${cat.name}</div>
+                    <div class="cat-hint">${cat.hint}</div>
+                </div>
+                <div class="counter">
+                    <button class="c-btn" onclick="chg('${cat.id}',-1)">−</button>
+                    <div class="c-val" id="v-${cat.id}">${v}</div>
+                    <button class="c-btn" onclick="chg('${cat.id}',1)">+</button>
+                </div>
+                <div class="cat-pts ${ptsClass(pts)}" id="p-${cat.id}">${fmt(pts)}</div>
+            `;
+
+        } else if (cat.type === 'house') {
+            const hs = houseScore(p);
+            row.innerHTML = `
+                <div class="cat-icon">${cat.icon}</div>
+                <div class="cat-info" style="flex:1">
+                    <div class="cat-name">Dom</div>
+                    <div class="house-extras">
+                        <div class="house-row">
+                            <span class="house-row-label">Pomieszczenia:</span>
+                            <div class="counter">
+                                <button class="c-btn" onclick="chgRooms(-1)">−</button>
+                                <div class="c-val" id="v-houseRooms">${p.houseRooms}</div>
+                                <button class="c-btn" onclick="chgRooms(1)">+</button>
+                            </div>
+                        </div>
+                        <div class="house-row" style="align-items:flex-start">
+                            <span class="house-row-label" style="padding-top:4px">Materiał:</span>
+                            <div class="material-btns">
+                                <button class="mat-btn ${p.houseMat==='wood'  ? 'active':''}" onclick="setMat('wood')">🪵 Drewno<br><small>0/pom.</small></button>
+                                <button class="mat-btn ${p.houseMat==='clay'  ? 'active':''}" onclick="setMat('clay')">🧱 Glina<br><small>+1/pom.</small></button>
+                                <button class="mat-btn ${p.houseMat==='stone' ? 'active':''}" onclick="setMat('stone')">🪨 Kamień<br><small>+2/pom.</small></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cat-pts ${ptsClass(hs)}" id="p-house">${fmt(hs)}</div>
+            `;
+
+        } else if (cat.type === 'manual') {
+            const b = p.bonus ?? 0;
+            row.innerHTML = `
+                <div class="cat-icon">${cat.icon}</div>
+                <div class="cat-info">
+                    <div class="cat-name">${cat.name}</div>
+                    <div class="cat-hint">${cat.hint}</div>
+                </div>
+                <div class="counter">
+                    <button class="c-btn" onclick="chgBonus(-1)">−</button>
+                    <div class="c-val" id="v-bonus">${b}</div>
+                    <button class="c-btn" onclick="chgBonus(1)">+</button>
+                </div>
+                <div class="cat-pts ${ptsClass(b)}" id="p-bonus">${fmt(b)}</div>
+            `;
+        }
+
+        card.appendChild(row);
+    });
+
+    renderNav();
+}
+
+function ptsClass(n) { return n < 0 ? 'neg' : n > 0 ? 'pos' : 'zero'; }
+function fmt(n) { return n > 0 ? '+' + n : String(n); }
+
+function updateBar() {
+    document.getElementById('bar-total').textContent = playerTotal(players[cur]);
+}
+
+/* counters */
+function chg(id, d) {
+    const p = players[cur];
+    const cat = CATS.find(c => c.id === id);
+    p.vals[id] = Math.max(cat.min, Math.min(cat.max, (p.vals[id] ?? 0) + d));
+    const v = p.vals[id], pts = cat.score(v);
+    document.getElementById('v-' + id).textContent = v;
+    setPts('p-' + id, pts);
+    updateBar();
+}
+
+function chgRooms(d) {
+    const p = players[cur];
+    p.houseRooms = Math.max(2, Math.min(5, p.houseRooms + d));
+    document.getElementById('v-houseRooms').textContent = p.houseRooms;
+    setPts('p-house', houseScore(p));
+    updateBar();
+}
+
+function setMat(m) {
+    players[cur].houseMat = m;
+    document.querySelectorAll('.mat-btn').forEach((b, i) => {
+        b.classList.toggle('active', ['wood','clay','stone'][i] === m);
+    });
+    setPts('p-house', houseScore(players[cur]));
+    updateBar();
+}
+
+function chgBonus(d) {
+    const p = players[cur];
+    p.bonus = (p.bonus ?? 0) + d;
+    document.getElementById('v-bonus').textContent = p.bonus;
+    setPts('p-bonus', p.bonus);
+    updateBar();
+}
+
+function setPts(id, pts) {
+    const el = document.getElementById(id);
+    el.textContent = fmt(pts);
+    el.className = 'cat-pts ' + ptsClass(pts);
+}
+
+function renderNav() {
+    const nav = document.getElementById('nav-row');
+    nav.innerHTML = '';
+    if (cur > 0) {
+        const b = document.createElement('button');
+        b.className = 'nav-btn nav-prev';
+        b.textContent = '← Poprzedni';
+        b.onclick = () => switchTo(cur - 1);
+        nav.appendChild(b);
+    }
+    if (cur < players.length - 1) {
+        const b = document.createElement('button');
+        b.className = 'nav-btn nav-next';
+        b.textContent = 'Następny →';
+        b.onclick = () => switchTo(cur + 1);
+        nav.appendChild(b);
+    } else {
+        const b = document.createElement('button');
+        b.className = 'nav-btn nav-finish';
+        b.textContent = '🏆 Pokaż wyniki';
+        b.onclick = showResults;
+        nav.appendChild(b);
+    }
+}
+
+/* ────────────────────────────────────────────────
+   RESULTS
+──────────────────────────────────────────────── */
+function showResults() {
+    const ranked = [...players]
+        .map(p => ({ ...p, total: playerTotal(p) }))
+        .sort((a, b) => b.total - a.total);
+
+    const list = document.getElementById('results-list');
+    list.innerHTML = '';
+
+    const RANK_CLASS  = ['rank-gold','rank-silver','rank-bronze','rank-other','rank-other'];
+    const RANK_SYMBOL = ['🥇','🥈','🥉','4','5'];
+
+    ranked.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'result-item' + (i === 0 ? ' winner' : '');
+
+        /* score breakdown rows */
+        const bdRows = CATS.map(cat => {
+            let pts, lbl;
+            if (cat.type === 'counter') { pts = cat.score(p.vals[cat.id] ?? 0); lbl = cat.name; }
+            else if (cat.type === 'house')  { pts = houseScore(p); lbl = 'Dom'; }
+            else { pts = p.bonus ?? 0; lbl = 'Karty'; }
+            return `<div class="bd-row"><span class="bd-label">${lbl}</span>
+                    <span class="bd-val ${pts < 0 ? 'neg' : ''}">${fmt(pts)}</span></div>`;
+        }).join('');
+
+        div.innerHTML = `
+            <div class="result-rank ${RANK_CLASS[i]}">${RANK_SYMBOL[i]}</div>
+            <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                    <div class="dot" style="background:${p.color}"></div>
+                    <div class="result-name">${p.name}</div>
+                </div>
+                <div class="result-label">${p.total} pkt</div>
+                <button class="detail-btn" onclick="toggleBd(this)">▼ szczegóły</button>
+                <div class="breakdown">${bdRows}</div>
+            </div>
+            <div class="result-score">${p.total}</div>
+        `;
+
+        list.appendChild(div);
+    });
+
+    show('results');
+}
+
+function toggleBd(btn) {
+    const bd = btn.nextElementSibling;
+    bd.classList.toggle('open');
+    btn.textContent = bd.classList.contains('open') ? '▲ ukryj' : '▼ szczegóły';
+}
+
+function newGame() {
+    show('setup');
+}
+
+/* ── Init ── */
+setCount(4);
+renderNameInputs();
+</script>
+</body>
+</html>

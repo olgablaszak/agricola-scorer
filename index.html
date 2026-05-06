@@ -443,6 +443,7 @@ const HISTORY_KEY = 'agricola_history_v1';
 const calc = {
     fields:     n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
     pastures:   n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
+    grain:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
     vegetables: n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
     sheep:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
     boar:       n => n===0?-1: n<=2?1: n<=4?2: n<=6?3: 4,
@@ -459,6 +460,10 @@ const CATS = [
     { id:'pastures',   type:'counter', icon:'🌿', name:'Pastwiska',
       hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
       min:0, max:10, score: n => calc.pastures(n) },
+
+    { id:'grain',      type:'counter', icon:'🌽', name:'Zboże',
+      hint:'0: −1 | 1–3: +1 | 4–5: +2 | 6–7: +3 | 8+: +4',
+      min:0, max:20, score: n => calc.grain(n) },
 
     { id:'vegetables', type:'counter', icon:'🥕', name:'Warzywa',
       hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',

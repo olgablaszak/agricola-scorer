@@ -491,8 +491,8 @@ async function fbClear() {
 }
 
 const calc = {
-    fields:     n => n<=1?-1: n===2?1: n===3?2: n===4?3: 4,
-    pastures:   n => n<=1?-1: n===2?1: n===3?2: n===4?3: 4,
+    fields:     n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
+    pastures:   n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
     grain:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
     vegetables: n => n===0?-1: n===1?1: n===2?2: n===3?3: 4,
     sheep:      n => n===0?-1: n<=3?1: n<=5?2: n<=7?3: 4,
@@ -504,11 +504,11 @@ const HOUSE_PTS = { wood: 0, clay: 1, stone: 2 };
 
 const CATS = [
     { id:'fields',     type:'counter', icon:'🌾', name:'Pola',
-      hint:'0–1: −1 | 2: +1 | 3: +2 | 4: +3 | 5+: +4',
+      hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
       min:0, max:10, score: n => calc.fields(n) },
 
     { id:'pastures',   type:'counter', icon:'🌿', name:'Pastwiska',
-      hint:'0–1: −1 | 2: +1 | 3: +2 | 4: +3 | 5+: +4',
+      hint:'0: −1 | 1: +1 | 2: +2 | 3: +3 | 4+: +4',
       min:0, max:10, score: n => calc.pastures(n) },
 
     { id:'grain',      type:'counter', icon:'🌽', name:'Zboże',
